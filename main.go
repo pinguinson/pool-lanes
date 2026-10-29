@@ -11,12 +11,14 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	_ "time/tzdata" // For Europe/London where the system has no zoneinfo.
 )
 
 func main() {
 	dbPath := flag.String("db", "pool-lanes.db", "SQLite database path")
 	interval := flag.Duration("interval", 5*time.Minute, "how often to check the feed for changes")
 	once := flag.Bool("once", false, "catch up with the feed once, then exit")
+	addr := flag.String("addr", "", "serve the web UI on this address, e.g. :8080")
 	flag.Parse()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -29,9 +31,29 @@ func main() {
 	defer st.db.Close()
 	client := &http.Client{Timeout: time.Minute}
 
+	loc, err := time.LoadLocation("Europe/London")
+	if err != nil {
+		log.Fatal(err)
+	}
+	srv := &server{st: st, loc: loc, now: time.Now}
+	if *addr != "" {
+		hs := &http.Server{Addr: *addr, Handler: srv.handler()}
+		go func() {
+			if err := hs.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Fatal(err)
+			}
+		}()
+		defer hs.Shutdown(context.Background())
+		log.Printf("serving on %s", *addr)
+	}
+
 	for {
-		if err := catchUp(ctx, client, st); err != nil && ctx.Err() == nil {
-			log.Print(err)
+		if err := catchUp(ctx, client, st); err != nil {
+			if ctx.Err() == nil {
+				log.Print(err)
+			}
+		} else {
+			srv.checked(time.Now())
 		}
 		if *once {
 			return

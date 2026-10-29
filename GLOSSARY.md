@@ -40,7 +40,7 @@ The pace a Lane Swim Session's Lane is set aside for: Fast, Medium or Slow. Othe
 _Avoid_: Level, lane type
 
 **Cancelled Session**:
-A Swim Session that was published and then withdrawn, e.g. for a gala, a bank holiday or maintenance.
+A Swim Session that was published and then withdrawn before its start time, e.g. for a gala, a bank holiday or maintenance. A Swim Session that disappears after it has started is just over, not cancelled.
 _Avoid_: Closure
 
 ### Busyness
@@ -51,6 +51,9 @@ _Avoid_: Occupancy, attendance, headcount
 
 **Pool Busyness**:
 The Busyness of a Pool at a moment in time: places booked across every Lane Swim Session in that Pool running then, divided by their combined capacity. Public Swims and Disabled Swims don't count.
+
+**Speed Busyness**:
+The Busyness of a Pool's Lane Swim Sessions at one Speed at a moment in time: places booked across those running then, divided by their combined capacity. Cancelled Sessions don't count.
 
 **Final Busyness**:
 A Swim Session's Busyness at its start time.

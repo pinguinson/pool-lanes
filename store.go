@@ -117,3 +117,37 @@ func (s *store) savePage(ctx context.Context, p page, now time.Time) (changed in
 	}
 	return changed, tx.Commit()
 }
+
+// loadSwims returns, with their latest places, a Pool's Lane Swim Sessions at
+// one Speed and its Public Swims, starting in [from, to).
+func (s *store) loadSwims(ctx context.Context, pool, speed string, from, to time.Time) ([]swim, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT s.id, s.kind, s.speed, s.lanes, s.start, s.end, s.deleted_at < s.start, o.capacity, o.remaining
+		FROM sessions s JOIN observations o ON o.rowid = (
+			SELECT rowid FROM observations WHERE session_id = s.id ORDER BY seen_at DESC, rowid DESC LIMIT 1)
+		WHERE s.pool = ? AND s.start >= ? AND s.start < ?
+			AND ((s.kind = ? AND s.speed = ?) OR s.kind = 'Public Swim')`,
+		pool, from.UTC().Format(time.RFC3339), to.UTC().Format(time.RFC3339), laneSwim, speed)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var swims []swim
+	for rows.Next() {
+		var sw swim
+		var start, end string
+		var cancelled sql.NullBool
+		if err := rows.Scan(&sw.ID, &sw.Kind, &sw.Speed, &sw.Lanes, &start, &end, &cancelled, &sw.Capacity, &sw.Remaining); err != nil {
+			return nil, err
+		}
+		if sw.Start, err = time.Parse(time.RFC3339, start); err != nil {
+			return nil, err
+		}
+		if sw.End, err = time.Parse(time.RFC3339, end); err != nil {
+			return nil, err
+		}
+		sw.Pool, sw.Cancelled = pool, cancelled.Bool
+		swims = append(swims, sw)
+	}
+	return swims, rows.Err()
+}

@@ -4,22 +4,23 @@ Decisions made before building, in the terms of [GLOSSARY.md](../GLOSSARY.md). [
 
 ## The question it answers
 
-"How busy is the Training Pool on Wednesday at 10:30?" A time resolves to the Swim Sessions in progress then, in each Pool. If no Lane Swim Session covers that time, the answer says so and names the nearest sessions.
+"How busy is the Training Pool's Medium lane on Wednesday at 10:30?" A time resolves to the Lane Swim Sessions in progress then, in one Pool at one Speed, and the answer is their Speed Busyness right now.
 
-Every answer gives both:
-
-- **Live**: the current Pool Busyness of the next matching date's sessions, broken down by Speed.
-- **Typical**: Typical Busyness for that Pool, Speed, weekday and start time, or "no history yet" when the slot is new, e.g. after a timetable change. History is never borrowed from a nearby slot.
+v1 shows live numbers only. Typical Busyness and any other prediction wait until there's enough history to base them on.
 
 ## UI (v1)
 
-- A web page with a week grid covering the next 7 days and one row per Pool. Each cell shows live Pool Busyness, with Typical Busyness beside it.
-- A cell's detail breaks Pool Busyness down by Speed.
-- Public Swim gets its own row per Pool, because it takes Lanes away from lane swimmers. Disabled Swim is hidden.
-- Cancelled Sessions show as cancelled.
+- Six pages, one per Pool and Speed: `/competition/fast` … `/training/slow`, with a Pool × Speed nav at the top. `/` redirects to `/competition/medium`, and `/competition` or `/training` to that Pool's Medium page.
+- Each page is a grid with one column per day, from today to today + 6, and one row per 15 minutes in Europe/London time. Swim Sessions last an hour and start on the quarter hour, staggered by Lane, so 15 minutes is the step at which Speed Busyness is exact. Only times at which that week has a Lane Swim Session at that Speed, or a Public Swim, get a row.
+- A cell shows Speed Busyness as a percentage, shaded darker the fuller it is, with booked/capacity underneath. A cell is empty when no Lane Swim Session at that Speed is running. On desktop, hovering shows the cell's Lanes and each session's start–end and booked/capacity.
+- Times today that have already passed are greyed out and show no numbers.
+- Cancelled Sessions don't count towards Speed Busyness. A cell whose sessions are all cancelled says "Cancelled". A cell where only some are cancelled shows the rest, plus a note such as "1 lane cancelled".
+- A Public Swim shows as a badge in the cells it overlaps on every Speed page of its Pool, e.g. "Public Swim · 2 lanes · 4/12", because it takes Lanes away from lane swimmers. A Public Swim over the whole Pool replaces the cell's contents. Disabled Swim is hidden.
+- The page says when the feed was last checked successfully, in red once that's more than 15 minutes ago. It reloads itself every 5 minutes.
 - The page credits Everyone Active as the source; the feed's CC BY 4.0 licence requires it.
 - No login: it's reachable only over the tailnet.
 - Desktop-first. It should still work on a phone, but the layout is designed for a desktop screen.
+- Served by the same binary as the poller, from the same SQLite database, when `-addr` is given: server-rendered HTML, no JavaScript build, and a `/healthz` endpoint for the health check.
 
 ## Data
 
@@ -37,6 +38,6 @@ Alerts, booking, other Centres, and activities other than swimming. Later: an MC
 
 ## Status (29 Oct 2026)
 
-- The reader is built and has been running on the developer's Mac since 29 Oct, writing to `pool-lanes.db` in the repo root, to prove over 48 hours that the feed's places change live.
-- The first full download showed real bookings, but the first polls after it saw no changes. If counts stay flat, fall back to scraping the Connect booking portal, as ADR 0001 says.
-- Unconfirmed: whether the feed drops a session only when it's cancelled, or also once it's over. Check with the poller's data before using the `deleted_at` column to mean cancelled.
+- The reader has been running on the developer's Mac since 29 Oct, writing to `pool-lanes.db` in the repo root. Within its first five hours it recorded 109 changes to places, so the feed carries this Centre's bookings live, and building on it went ahead before the 48 hours were up.
+- The feed drops a Swim Session once it has started: all 66 dropped in the first five hours had already started. So `deleted_at` means cancelled only when it's before `start`.
+- Next: the v1 web UI. The Docker image, its GitHub Actions build and the homelab App come after that, as a separate task.
