@@ -64,8 +64,9 @@ func TestLoadSwims(t *testing.T) {
 }
 
 func testServer(t *testing.T) *server {
-	srv := &server{st: testStore(t), loc: mustLoc(t), now: func() time.Time { return at(t, "2026-11-02T08:00") }}
-	srv.checked(at(t, "2026-11-02T07:55"))
+	srv := &server{st: testStore(t), loc: mustLoc(t), now: func() time.Time { return at(t, "2026-11-02T08:00") },
+		started: at(t, "2026-11-02T06:00")}
+	srv.checked(at(t, "2026-11-02T07:55"), true)
 	return srv
 }
 
@@ -97,13 +98,33 @@ func TestPage(t *testing.T) {
 	if strings.Contains(body, "7/8") {
 		t.Error("page shows the Slow session")
 	}
+	if strings.Contains(body, "hasn't changed") {
+		t.Error("a feed that changed 5 minutes ago is called frozen")
+	}
 }
 
 func TestStale(t *testing.T) {
 	srv := testServer(t)
-	srv.checked(at(t, "2026-11-02T07:40"))
+	srv.checked(at(t, "2026-11-02T07:40"), true)
 	if body := get(t, srv.handler(), "/training/medium").Body.String(); !strings.Contains(body, `class="stale"`) {
 		t.Error("a 20-minute-old check isn't marked stale")
+	}
+}
+
+func TestFrozenFeed(t *testing.T) {
+	srv := testServer(t)
+	srv.checked(at(t, "2026-11-02T07:30"), true)
+	srv.checked(at(t, "2026-11-02T07:55"), false)
+	body := get(t, srv.handler(), "/training/medium").Body.String()
+	if !strings.Contains(body, "Last checked 07:55") || !strings.Contains(body, "hasn't changed since 07:30") {
+		t.Error("a feed with nothing new for 30 minutes isn't called frozen")
+	}
+
+	// Since the server started, if the feed never changed.
+	srv = &server{st: srv.st, loc: srv.loc, now: srv.now, started: at(t, "2026-11-02T07:00")}
+	srv.checked(at(t, "2026-11-02T07:55"), false)
+	if body := get(t, srv.handler(), "/training/medium").Body.String(); !strings.Contains(body, "hasn't changed since 07:00") {
+		t.Error("a feed with nothing new since the server started isn't called frozen")
 	}
 }
 

@@ -108,7 +108,7 @@ func TestCatchUpStartsOverWhenCursorIsGone(t *testing.T) {
 			Body: io.NopCloser(strings.NewReader(`{"next":"` + feedURL + `","items":[]}`))}, nil
 	})}
 
-	if err := catchUp(context.Background(), client, st); err != nil {
+	if _, err := catchUp(context.Background(), client, st); err != nil {
 		t.Fatal(err)
 	}
 	if len(got) != 2 || got[1] != feedURL {

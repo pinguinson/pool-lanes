@@ -32,23 +32,32 @@ func lookup(slugs []slug, s string) (string, bool) {
 	return "", false
 }
 
-// A check of the feed older than this is shown as stale.
+// A check of the feed older than this is shown as stale. The feed covers every
+// Everyone Active centre, so it normally has something new at every check,
+// even at night: going this long without is shown as the feed being frozen,
+// as it was after an outage on 30 Oct 2026.
 const staleAfter = 15 * time.Minute
 
 type server struct {
-	st  *store
-	loc *time.Location
-	now func() time.Time
+	st      *store
+	loc     *time.Location
+	now     func() time.Time
+	started time.Time
 
 	mu          sync.Mutex
 	lastChecked time.Time
+	lastMoved   time.Time
 }
 
-// checked records a successful check of the feed.
-func (s *server) checked(t time.Time) {
+// checked records a successful check of the feed, and whether it had anything
+// new.
+func (s *server) checked(t time.Time, moved bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.lastChecked = t
+	if moved {
+		s.lastMoved = t
+	}
 }
 
 func (s *server) handler() http.Handler {
@@ -89,8 +98,11 @@ func (s *server) page(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.mu.Lock()
-	checked := s.lastChecked
+	checked, moved := s.lastChecked, s.lastMoved
 	s.mu.Unlock()
+	if moved.IsZero() {
+		moved = s.started
+	}
 
 	data := struct {
 		Pool, Speed         string
@@ -99,6 +111,7 @@ func (s *server) page(w http.ResponseWriter, r *http.Request) {
 		Grid                grid
 		LastChecked         string
 		Stale               bool
+		FrozenSince         string
 	}{
 		Pool: pool, Speed: speed,
 		PoolSlug: r.PathValue("pool"), SpeedSlug: r.PathValue("speed"),
@@ -108,6 +121,9 @@ func (s *server) page(w http.ResponseWriter, r *http.Request) {
 	}
 	if !checked.IsZero() {
 		data.LastChecked = checked.In(s.loc).Format("15:04")
+		if checked.Sub(moved) > staleAfter {
+			data.FrozenSince = moved.In(s.loc).Format("15:04")
+		}
 	}
 	var buf bytes.Buffer
 	if err := pageTmpl.Execute(&buf, data); err != nil {

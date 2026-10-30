@@ -36,7 +36,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	srv := &server{st: st, loc: loc, now: time.Now}
+	srv := &server{st: st, loc: loc, now: time.Now, started: time.Now()}
 	if *addr != "" {
 		hs := &http.Server{Addr: *addr, Handler: srv.handler()}
 		go func() {
@@ -49,12 +49,12 @@ func main() {
 	}
 
 	for {
-		if err := catchUp(ctx, client, st); err != nil {
+		if moved, err := catchUp(ctx, client, st); err != nil {
 			if ctx.Err() == nil {
 				log.Print(err)
 			}
 		} else {
-			srv.checked(time.Now())
+			srv.checked(time.Now(), moved)
 		}
 		if *once {
 			return
@@ -67,41 +67,43 @@ func main() {
 	}
 }
 
-// catchUp reads every page after the stored cursor. The feed's last page is
-// empty and links to itself, which is where the next catch-up starts.
-func catchUp(ctx context.Context, client *http.Client, st *store) error {
+// catchUp reads every page after the stored cursor, and says whether there
+// were any. The feed's last page is empty and links to itself, which is where
+// the next catch-up starts.
+func catchUp(ctx context.Context, client *http.Client, st *store) (moved bool, err error) {
 	pages, changed := 0, 0
 	defer func() { log.Printf("read %d pages, %d sessions changed", pages, changed) }()
 	for {
 		url, err := st.cursor(ctx)
 		if err != nil {
-			return err
+			return moved, err
 		}
 		p, err := fetchPage(ctx, client, url)
 		if errors.Is(err, errPageGone) && url != feedURL {
 			// Reading it all again only stores what changed.
 			log.Printf("%v; starting over from the feed's first page", err)
 			if err := st.resetCursor(ctx); err != nil {
-				return err
+				return moved, err
 			}
 			continue
 		}
 		if err != nil {
-			return err
+			return moved, err
 		}
 		pages++
 		if len(p.Items) == 0 {
-			return nil
+			return moved, nil
 		}
 		n, err := st.savePage(ctx, p, time.Now())
 		if err != nil {
-			return err
+			return moved, err
 		}
+		moved = true
 		changed += n
 		// Stay polite during the first catch-up, which reads the whole feed.
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return moved, ctx.Err()
 		case <-time.After(250 * time.Millisecond):
 		}
 	}

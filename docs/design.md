@@ -16,7 +16,7 @@ v1 shows live numbers only. Typical Busyness and any other prediction wait until
 - Times today that have already passed are greyed out and show no numbers.
 - Cancelled Sessions don't count towards Speed Busyness. A cell whose sessions are all cancelled says "Cancelled". A cell where only some are cancelled shows the rest, plus a note such as "1 lane cancelled".
 - A Public Swim shows as a badge in the cells it overlaps on every Speed page of its Pool, e.g. "Public Swim · 2 lanes · 4/12", because it takes Lanes away from lane swimmers. A Public Swim over the whole Pool replaces the cell's contents. Disabled Swim is hidden.
-- The page says when the feed was last checked successfully, in red once that's more than 15 minutes ago. It reloads itself every 5 minutes.
+- The page says when the feed was last checked successfully, in red once that's more than 15 minutes ago. It also warns, in red, when the feed has had nothing new for more than 15 minutes. The feed covers every Everyone Active centre, so it normally has something new at every check, and going without means it's frozen, as it was after an outage on 30 Oct 2026. The page reloads itself every 5 minutes.
 - The page credits Everyone Active as the source; the feed's CC BY 4.0 licence requires it.
 - No login: it's reachable only over the tailnet.
 - Desktop-first. It should still work on a phone, but the layout is designed for a desktop screen.

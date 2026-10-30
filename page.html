@@ -42,7 +42,8 @@
 </nav>
 <p class="status">Share of places booked in {{.Speed}} Lane Swim Sessions.
 {{- if .LastChecked}} <span{{if .Stale}} class="stale"{{end}}>Last checked {{.LastChecked}}.</span>
-{{- else}} <span class="stale">Not checked yet.</span>{{end}}</p>
+{{- else}} <span class="stale">Not checked yet.</span>{{end}}
+{{- with .FrozenSince}} <span class="stale">Everyone Active's feed hasn't changed since {{.}}, so these numbers may be out of date.</span>{{end}}</p>
 <div class="scroll">
 <table>
 	<thead><tr><th></th>{{range .Grid.Days}}<th scope="col">{{.Format "Mon 2 Jan"}}</th>{{end}}</tr></thead>
