@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"log"
 	"net/http"
@@ -77,6 +78,14 @@ func catchUp(ctx context.Context, client *http.Client, st *store) error {
 			return err
 		}
 		p, err := fetchPage(ctx, client, url)
+		if errors.Is(err, errPageGone) && url != feedURL {
+			// Reading it all again only stores what changed.
+			log.Printf("%v; starting over from the feed's first page", err)
+			if err := st.resetCursor(ctx); err != nil {
+				return err
+			}
+			continue
+		}
 		if err != nil {
 			return err
 		}

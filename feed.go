@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -36,6 +37,10 @@ var kinds = map[string]kind{
 }
 
 var pools = map[string]string{"C": "Competition", "T": "Training"}
+
+// errPageGone is the feed's answer to a page past its end. That happens when
+// its timestamps go backwards, as they did after an outage on 30 Oct 2026.
+var errPageGone = errors.New("feed has no such page")
 
 type page struct {
 	Next  string `json:"next"`
@@ -125,6 +130,9 @@ func fetchPage(ctx context.Context, client *http.Client, url string) (page, erro
 		return page{}, err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return page{}, fmt.Errorf("GET %s: %w", url, errPageGone)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return page{}, fmt.Errorf("GET %s: %s", url, resp.Status)
 	}

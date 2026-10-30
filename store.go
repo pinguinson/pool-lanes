@@ -61,6 +61,12 @@ func (s *store) cursor(ctx context.Context) (string, error) {
 	return url, err
 }
 
+// resetCursor makes the next read start from the feed's first page.
+func (s *store) resetCursor(ctx context.Context) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM cursor`)
+	return err
+}
+
 // savePage records a page's sessions and moves the cursor past it, together,
 // so a crash never skips or half-applies a page.
 func (s *store) savePage(ctx context.Context, p page, now time.Time) (changed int, err error) {

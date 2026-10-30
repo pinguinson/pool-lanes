@@ -1,7 +1,12 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"io"
+	"net/http"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -75,5 +80,38 @@ func TestParseSession(t *testing.T) {
 				t.Errorf("got %+v\nwant %+v", got, want)
 			}
 		})
+	}
+}
+
+type roundTripper func(*http.Request) (*http.Response, error)
+
+func (f roundTripper) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+func TestCatchUpStartsOverWhenCursorIsGone(t *testing.T) {
+	st, err := openStore(filepath.Join(t.TempDir(), "test.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.db.Close()
+	const old = feedURL + "?afterTimestamp=1211963832&afterId=00000000001950306579"
+	if _, err := st.db.Exec(`INSERT INTO cursor (id, url) VALUES (1, ?)`, old); err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	client := &http.Client{Transport: roundTripper(func(r *http.Request) (*http.Response, error) {
+		got = append(got, r.URL.String())
+		if r.URL.String() == old {
+			return &http.Response{StatusCode: http.StatusNotFound, Status: "404 Not Found",
+				Body: io.NopCloser(strings.NewReader(`{"message":"feed not found"}`))}, nil
+		}
+		return &http.Response{StatusCode: http.StatusOK,
+			Body: io.NopCloser(strings.NewReader(`{"next":"` + feedURL + `","items":[]}`))}, nil
+	})}
+
+	if err := catchUp(context.Background(), client, st); err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[1] != feedURL {
+		t.Errorf("requested %v, want the old cursor then the feed's start", got)
 	}
 }
