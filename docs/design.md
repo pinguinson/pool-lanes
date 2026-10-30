@@ -30,14 +30,15 @@ v1 shows live numbers only. Typical Busyness and any other prediction wait until
 
 ## Deployment
 
-The image is built by GitHub Actions and published to `ghcr.io/pinguinson/pool-lanes`. It runs as an App in the [homelab](https://github.com/pinguinson/homelab) repo: a stack with its own Tailscale Sidecar and health check, the image pinned by digest and kept up to date by Renovate, data in `/mnt/user/appdata/pool-lanes/`.
+The image is built by GitHub Actions and published to `ghcr.io/pinguinson/pool-lanes`. It runs as an App in the [homelab](https://github.com/pinguinson/homelab) repo: a Stack, `stacks/pool-lanes`, with its own Tailscale Sidecar and health check, reachable at `pool-lanes` on the tailnet only. The image is pinned by digest on `latest`, so every push to `main` here reaches the homelab through a Renovate digest update, which merges automatically on weekend mornings. The database is `/mnt/user/appdata/pool-lanes/data/pool-lanes.db`. The image runs as Unraid's nobody:users (99:100), so `data/` must belong to 99:100 before the first start: Docker otherwise creates it as root, and the App can't write its database.
 
 ## Out of scope for v1
 
 Alerts, booking, other Centres, and activities other than swimming. Later: an MCP server answering the same question from the same data.
 
-## Status (29 Oct 2026)
+## Status (30 Oct 2026)
 
-- The reader has been running on the developer's Mac since 29 Oct, writing to `pool-lanes.db` in the repo root. Within its first five hours it recorded 109 changes to places, so the feed carries this Centre's bookings live, and building on it went ahead before the 48 hours were up.
+- The feed carries this Centre's bookings live: the first poller, on the developer's Mac, recorded 109 changes to places within five hours on 29 Oct.
 - The feed drops a Swim Session once it has started: all 66 dropped in the first five hours had already started. So `deleted_at` means cancelled only when it's before `start`.
-- The v1 web UI is built and served by the poller on the developer's Mac. The Docker image is built and published by GitHub Actions. Next: the homelab App.
+- v1 runs on the homelab since 30 Oct, carrying on from the Mac's database, which stopped at 12:54 that day.
+- Everyone Active's feed came back frozen after an outage overnight on 29–30 Oct: no new items, and places as they were the evening before. The page warns while that lasts, and the poller picks changes up again once the feed moves.

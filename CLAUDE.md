@@ -9,4 +9,4 @@ Shows how booked-up swimming is at London Aquatics Centre.
 ## Gotchas
 
 - Swim Session kinds, Speeds and Pools are decoded from the feed's session series IDs (`feed.go`). That layout was inferred from the data and isn't documented by Everyone Active. A series letter not in the `kinds` map is stored as it is, as a raw kind.
-- A poller may be running from the repo root against `pool-lanes.db`. Check with `pgrep -fl 'pool-lanes -db'` before touching the database or schema, and stop it first.
+- The live database is on the homelab server, not in the repo: `/mnt/user/appdata/pool-lanes/data/pool-lanes.db` on Tower, in the `pool-lanes-pool-lanes-1` container. `pool-lanes.db` in the repo root is a stale snapshot from 30 Oct. The schema is only ever created, never migrated, so a schema change needs a migration for the live database.
