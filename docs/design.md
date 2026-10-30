@@ -40,4 +40,4 @@ Alerts, booking, other Centres, and activities other than swimming. Later: an MC
 
 - The reader has been running on the developer's Mac since 29 Oct, writing to `pool-lanes.db` in the repo root. Within its first five hours it recorded 109 changes to places, so the feed carries this Centre's bookings live, and building on it went ahead before the 48 hours were up.
 - The feed drops a Swim Session once it has started: all 66 dropped in the first five hours had already started. So `deleted_at` means cancelled only when it's before `start`.
-- Next: the v1 web UI. The Docker image, its GitHub Actions build and the homelab App come after that, as a separate task.
+- The v1 web UI is built and served by the poller on the developer's Mac. The Docker image is built and published by GitHub Actions. Next: the homelab App.
